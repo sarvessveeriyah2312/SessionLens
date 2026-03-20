@@ -8,6 +8,7 @@
     "build": "electron-vite build",
     "start": "electron-vite preview",
     "lint": "eslint . --ext .ts,.tsx",
+    "postinstall": "electron-builder install-app-deps",
     "dist:mac": "electron-vite build && electron-builder --mac",
     "dist:win": "electron-vite build && electron-builder --win",
     "dist:linux": "electron-vite build && electron-builder --linux",
@@ -66,7 +67,7 @@
     }
   },
   "dependencies": {
-    "better-sqlite3": "^9.4.3",
+    "better-sqlite3": "^11.9.0",
     "bonjour-service": "^1.2.1",
     "chokidar": "^3.6.0",
     "date-fns": "^3.6.0",
@@ -83,7 +84,7 @@
     "@electron-toolkit/eslint-config-ts": "^3.0.0",
     "@electron-toolkit/preload": "^3.0.1",
     "@electron-toolkit/utils": "^3.0.0",
-    "@types/better-sqlite3": "^7.6.8",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20.12.7",
     "@types/node-notifier": "^8.0.5",
     "@types/react": "^18.3.3",
