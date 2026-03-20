@@ -1,0 +1,130 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-primary: #0f0f0f;
+  --bg-card: #1a1a1a;
+  --bg-hover: #222222;
+  --border: #2a2a2a;
+  --border-focus: #00f5ff;
+  --accent: #00f5ff;
+  --accent-dim: #00c8d4;
+  --accent-glow: rgba(0, 245, 255, 0.15);
+  --text-primary: #ffffff;
+  --text-secondary: #a0a0a0;
+  --text-muted: #606060;
+  --status-active: #22c55e;
+  --status-idle: #eab308;
+  --status-exited: #6b7280;
+  --status-completed: #3b82f6;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #444;
+}
+
+.drag-region {
+  -webkit-app-region: drag;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+.neon-text {
+  color: var(--accent);
+  text-shadow: 0 0 8px rgba(0, 245, 255, 0.5);
+}
+
+.neon-border {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 12px rgba(0, 245, 255, 0.2);
+}
+
+.glass-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.glass-card:hover {
+  border-color: #404040;
+}
+
+input, textarea {
+  user-select: text;
+}
+
+.recharts-wrapper {
+  font-size: 11px;
+}
+
+.recharts-cartesian-axis-tick-value {
+  fill: #606060;
+}
+
+.recharts-tooltip-wrapper {
+  outline: none;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.status-dot-active {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+.tag-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 500;
+  background: rgba(0, 245, 255, 0.12);
+  color: var(--accent);
+  border: 1px solid rgba(0, 245, 255, 0.25);
+  cursor: default;
+}
+
+.tag-pill:hover {
+  background: rgba(0, 245, 255, 0.2);
+}
