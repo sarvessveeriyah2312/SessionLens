@@ -186,11 +186,19 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/):
 
 See [CHANGELOG.md](CHANGELOG.md) for the full version history.
 
-### Latest — v1.1.0
+### [v1.3.0](https://github.com/sarvessveeriyah2312/SessionLens/compare/v1.2.0...v1.3.0) — 2026-03-20
 
-- ✨ Automated versioning and releases via semantic-release
-- 🔄 CI/CD pipeline with builds for macOS, Windows, and Linux
-- 🐛 Various bug fixes and performance improvements
+- Add author metadata required for Linux `.deb` packaging
+- Professional README with download links, feature overview, and tech stack
+
+### [v1.2.0](https://github.com/sarvessveeriyah2312/SessionLens/compare/v1.1.0...v1.2.0) — 2026-03-20
+
+- Add initial README.md detailing project overview, features, development guide, and technical stack
+
+### [v1.1.0](https://github.com/sarvessveeriyah2312/SessionLens/compare/v1.0.0...v1.1.0) — 2026-03-20
+
+- Automated versioning and releases via semantic-release
+- CI/CD pipeline with builds for macOS, Windows, and Linux
 
 ---
 
