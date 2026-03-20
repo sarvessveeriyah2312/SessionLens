@@ -207,11 +207,3 @@ Please ensure your code follows the existing style and includes appropriate test
 Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
 
 ---
-
-<div align="center">
-
-**Made with ❤️ for the Claude Code community**
-
-[Report Bug](https://github.com/sarvessveeriyah2312/SessionLens/issues) · [Request Feature](https://github.com/sarvessveeriyah2312/SessionLens/issues) · [Star on GitHub](https://github.com/sarvessveeriyah2312/SessionLens)
-
-</div>
