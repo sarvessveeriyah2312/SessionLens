@@ -1,78 +1,140 @@
-# SessionLens
+<div align="center">
 
-> Real-time monitor for Claude Code sessions — track costs, tokens, timelines, and activity across all your AI coding sessions from a single desktop app.
+# 🔍 SessionLens
 
-[![Release](https://img.shields.io/github/v/release/sarvessveeriyah2312/SessionLens?style=flat-square&color=00f5ff)](https://github.com/sarvessveeriyah2312/SessionLens/releases/latest)
-[![CI](https://img.shields.io/github/actions/workflow/status/sarvessveeriyah2312/SessionLens/release.yml?style=flat-square&label=build)](https://github.com/sarvessveeriyah2312/SessionLens/actions/workflows/release.yml)
-[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey?style=flat-square)](https://github.com/sarvessveeriyah2312/SessionLens/releases/latest)
-[![License](https://img.shields.io/github/license/sarvessveeriyah2312/SessionLens?style=flat-square)](LICENSE)
+### Real-time monitor for Claude Code sessions
+
+Track costs, tokens, timelines, and activity across all your AI coding sessions from a single desktop app.
+
+[![Release](https://img.shields.io/github/v/release/sarvessveeriyah2312/SessionLens?style=for-the-badge&color=00f5ff&logo=github&logoColor=white)](https://github.com/sarvessveeriyah2312/SessionLens/releases/latest)
+[![CI](https://img.shields.io/github/actions/workflow/status/sarvessveeriyah2312/SessionLens/release.yml?style=for-the-badge&label=build&logo=githubactions&logoColor=white)](https://github.com/sarvessveeriyah2312/SessionLens/actions/workflows/release.yml)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey?style=for-the-badge&logo=electron&logoColor=white)](https://github.com/sarvessveeriyah2312/SessionLens/releases/latest)
+[![License](https://img.shields.io/github/license/sarvessveeriyah2312/SessionLens?style=for-the-badge&color=blue)](LICENSE)
+
+</div>
 
 ---
 
-## Download
+## 📦 Download
 
 Get the latest release for your platform:
 
+<div align="center">
+
 | Platform | Download |
 |----------|----------|
-| **macOS** (Intel + Apple Silicon) | [SessionLens.dmg](https://github.com/sarvessveeriyah2312/SessionLens/releases/latest) |
-| **Windows** | [SessionLens-Setup.exe](https://github.com/sarvessveeriyah2312/SessionLens/releases/latest) |
-| **Linux** | [SessionLens.AppImage](https://github.com/sarvessveeriyah2312/SessionLens/releases/latest) / [.deb](https://github.com/sarvessveeriyah2312/SessionLens/releases/latest) |
+| 🍎 **macOS** (Intel + Apple Silicon) | [SessionLens.dmg](https://github.com/sarvessveeriyah2312/SessionLens/releases/latest) |
+| 🪟 **Windows** | [SessionLens-Setup.exe](https://github.com/sarvessveeriyah2312/SessionLens/releases/latest) |
+| 🐧 **Linux** | [SessionLens.AppImage](https://github.com/sarvessveeriyah2312/SessionLens/releases/latest) / [.deb](https://github.com/sarvessveeriyah2312/SessionLens/releases/latest) |
 
-> All releases are on the [Releases page](https://github.com/sarvessveeriyah2312/SessionLens/releases).
+</div>
 
----
-
-## Features
-
-- **Live Dashboard** — see all active, idle, and exited Claude Code sessions at a glance
-- **Session Details** — drill into any session for full timeline, token breakdown, and cost analysis
-- **Cost Tracking** — real-time USD cost estimates with monthly and per-session budget alerts
-- **Analytics** — charts for daily spend, token usage, model distribution, and cache efficiency
-- **History** — searchable log of all past sessions with CSV export
-- **Notes & Tags** — annotate sessions with notes and tags for organisation
-- **No cloud** — all data stored locally in SQLite, nothing sent to external servers
+> All releases are available on the [Releases page](https://github.com/sarvessveeriyah2312/SessionLens/releases).
 
 ---
 
-## How It Works
+## ✨ Features
+
+<div align="center">
+<table>
+<tr>
+<td width="50%">
+
+### 🎯 **Live Dashboard**
+- View all active, idle, and exited sessions at a glance
+- Real-time updates with file-system watching
+- Quick status indicators and session controls
+
+</td>
+<td width="50%">
+
+### 📊 **Session Details**
+- Full timeline view of conversations
+- Token breakdown by model and role
+- Cost analysis with per-session metrics
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+### 💰 **Cost Tracking**
+- Real-time USD cost estimates
+- Monthly budget alerts
+- Per-session spending limits
+
+</td>
+<td width="50%">
+
+### 📈 **Analytics**
+- Daily spend charts
+- Token usage trends
+- Model distribution visualizations
+- Cache efficiency metrics
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+### 📜 **History & Export**
+- Searchable session archive
+- CSV export for all sessions
+- Filter by date, model, or tags
+
+</td>
+<td width="50%">
+
+### 🏷️ **Organization**
+- Add notes to any session
+- Custom tags for categorization
+- Full-text search across notes
+
+</td>
+</tr>
+</table>
+</div>
+
+### 🔒 Privacy First
+> **No cloud, no tracking** — all data stored locally in SQLite. Nothing is ever sent to external servers.
+
+---
+
+## ⚙️ How It Works
 
 SessionLens reads Claude Code's native session files directly from your filesystem:
 
-```
-~/.claude/sessions/{pid}.json          — active session metadata
-~/.claude/projects/{path}/{id}.jsonl   — conversation logs with token counts
+```bash
+~/.claude/sessions/{pid}.json          # Active session metadata
+~/.claude/projects/{path}/{id}.jsonl   # Conversation logs with token counts
 ```
 
-It watches these files with live file-system events so the dashboard updates instantly as you work.
+The app watches these files with live file-system events, so your dashboard updates instantly as you work. No configuration needed — just install and go.
 
 ---
 
-## Development
+## 🚀 Quick Start
 
-### Prerequisites
+### Installation
 
-- Node.js 20+
-- npm 9+
+1. Download the installer for your platform from [Releases](https://github.com/sarvessveeriyah2312/SessionLens/releases)
+2. Install and launch SessionLens
+3. Start using Claude Code — your sessions will appear automatically
 
-### Setup
+### Development Setup
 
 ```bash
+# Clone the repository
 git clone https://github.com/sarvessveeriyah2312/SessionLens.git
 cd SessionLens
+
+# Install dependencies
 npm install
-```
 
-### Run in development
-
-```bash
+# Run in development mode
 npm run dev
-```
 
-### Build for production
-
-```bash
-# Current platform only
+# Build for production
 npm run build
 
 # Package for distribution
@@ -83,50 +145,79 @@ npm run dist:linux   # Linux AppImage + deb
 
 ---
 
-## Releases
+## 🔧 Tech Stack
 
-Releases are automated via [semantic-release](https://semantic-release.gitbook.io/). Every push to `main` is analysed and a new version is published automatically when releasable commits are detected.
+<div align="center">
 
-### Commit format
+| Layer | Technology | Icon |
+|-------|-----------|------|
+| **Desktop Shell** | Electron 31 | ⚛️ |
+| **UI Framework** | React 18 + TypeScript | 🎨 |
+| **Build Tool** | electron-vite + Vite 5 | ⚡ |
+| **Packaging** | electron-builder 24 | 📦 |
+| **Styling** | Tailwind CSS | 🎭 |
+| **Charts** | Recharts | 📊 |
+| **Storage** | better-sqlite3 (SQLite) | 🗄️ |
+| **File Watching** | chokidar | 👁️ |
+| **CI/CD** | GitHub Actions + semantic-release | 🤖 |
 
-This project follows [Conventional Commits](https://www.conventionalcommits.org/):
-
-| Prefix | Release type |
-|--------|-------------|
-| `fix: ...` | Patch `1.0.x` |
-| `feat: ...` | Minor `1.x.0` |
-| `feat!:` or `BREAKING CHANGE:` | Major `x.0.0` |
-| `chore:`, `docs:`, `style:` | No release |
+</div>
 
 ---
 
-## Changelog
+## 📝 Versioning & Releases
+
+This project uses [semantic-release](https://semantic-release.gitbook.io/) for automated versioning. Every push to `main` is analyzed and a new version is published automatically when releasable commits are detected.
+
+### Commit Convention
+
+Follow [Conventional Commits](https://www.conventionalcommits.org/):
+
+| Prefix | Release Type | Example |
+|--------|-------------|---------|
+| `fix:` | Patch `1.0.x` | `fix: resolve session loading error` |
+| `feat:` | Minor `1.x.0` | `feat: add export to CSV feature` |
+| `feat!:` or `BREAKING CHANGE:` | Major `x.0.0` | `feat!: redesign data storage layer` |
+| `chore:`, `docs:`, `style:` | No release | `docs: update installation guide` |
+
+---
+
+## 📄 Changelog
 
 See [CHANGELOG.md](CHANGELOG.md) for the full version history.
 
 ### Latest — v1.1.0
 
-- Automated versioning and releases via semantic-release
-- CI/CD pipeline with builds for macOS, Windows, and Linux
+- ✨ Automated versioning and releases via semantic-release
+- 🔄 CI/CD pipeline with builds for macOS, Windows, and Linux
+- 🐛 Various bug fixes and performance improvements
 
 ---
 
-## Tech Stack
+## 🤝 Contributing
 
-| Layer | Technology |
-|-------|-----------|
-| Desktop shell | Electron 31 |
-| UI | React 18 + TypeScript |
-| Build | electron-vite + Vite 5 |
-| Packaging | electron-builder 24 |
-| Styling | Tailwind CSS |
-| Charts | Recharts |
-| Storage | better-sqlite3 (SQLite) |
-| File watching | chokidar |
-| CI/CD | GitHub Actions + semantic-release |
+Contributions are welcome! Here's how you can help:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes using conventional commits
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+Please ensure your code follows the existing style and includes appropriate tests.
 
 ---
 
-## License
+## 📜 License
 
-MIT
+Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
+
+---
+
+<div align="center">
+
+**Made with ❤️ for the Claude Code community**
+
+[Report Bug](https://github.com/sarvessveeriyah2312/SessionLens/issues) · [Request Feature](https://github.com/sarvessveeriyah2312/SessionLens/issues) · [Star on GitHub](https://github.com/sarvessveeriyah2312/SessionLens)
+
+</div>
