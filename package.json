@@ -7,7 +7,49 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "start": "electron-vite preview",
-    "lint": "eslint . --ext .ts,.tsx"
+    "lint": "eslint . --ext .ts,.tsx",
+    "dist:mac": "electron-vite build && electron-builder --mac",
+    "dist:win": "electron-vite build && electron-builder --win",
+    "dist:linux": "electron-vite build && electron-builder --linux",
+    "dist:all": "electron-vite build && electron-builder --mac --win --linux"
+  },
+  "build": {
+    "appId": "com.sessionlens.app",
+    "productName": "SessionLens",
+    "directories": {
+      "buildResources": "resources",
+      "output": "release/${version}"
+    },
+    "files": [
+      "out/**/*",
+      "!**/*.map"
+    ],
+    "mac": {
+      "target": [
+        { "target": "dmg", "arch": ["x64", "arm64"] }
+      ],
+      "category": "public.app-category.developer-tools",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false
+    },
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] }
+      ],
+      "publisherName": "SessionLens"
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "category": "Development"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "publish": {
+      "provider": "github",
+      "releaseType": "release"
+    }
   },
   "dependencies": {
     "better-sqlite3": "^9.4.3",
@@ -32,6 +74,7 @@
     "@vitejs/plugin-react": "^4.3.0",
     "autoprefixer": "^10.4.19",
     "electron": "^31.0.2",
+    "electron-builder": "^24.13.3",
     "electron-vite": "^2.3.0",
     "postcss": "^8.4.38",
     "tailwindcss": "^3.4.4",
