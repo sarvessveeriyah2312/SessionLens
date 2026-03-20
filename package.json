@@ -2,6 +2,11 @@
   "name": "sessionlens",
   "version": "1.3.0",
   "description": "Monitor all Claude Code sessions from a single interface",
+  "author": {
+    "name": "Sarvess Veeriyah",
+    "email": "sarvessveeriyah2312@gmail.com",
+    "url": "https://github.com/sarvessveeriyah2312"
+  },
   "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
