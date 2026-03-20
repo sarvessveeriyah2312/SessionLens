@@ -6,18 +6,25 @@ on:
       - main
     tags:
       - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Force release even if tag exists'
+        required: false
+        default: 'false'
+        type: choice
+        options: ['false', 'true']
 
 permissions:
   contents: write
 
 jobs:
-  auto-tag:
-    name: Auto-tag from package.json
+  check:
+    name: Check & tag
     runs-on: ubuntu-latest
-    if: github.ref_type == 'branch'
     outputs:
-      should_release: ${{ steps.tag.outputs.should_release }}
-      tag: ${{ steps.tag.outputs.tag }}
+      should_build: ${{ steps.decide.outputs.should_build }}
+      tag: ${{ steps.decide.outputs.tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,30 +32,44 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create tag if version is new
-        id: tag
+      - name: Decide whether to build
+        id: decide
         run: |
-          VERSION=$(node -p "require('./package.json').version")
-          TAG="v${VERSION}"
-          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+          if [ "${{ github.ref_type }}" == "tag" ]; then
+            # Direct tag push — always build
+            echo "should_build=true" >> $GITHUB_OUTPUT
+            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+            echo "Triggered by tag push: ${{ github.ref_name }}"
 
-          if git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "Tag $TAG already exists — skipping release."
-            echo "should_release=false" >> $GITHUB_OUTPUT
           else
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git tag "$TAG"
-            git push origin "$TAG"
-            echo "Created and pushed tag $TAG"
-            echo "should_release=true" >> $GITHUB_OUTPUT
+            # Branch push or workflow_dispatch — auto-tag if version is new
+            VERSION=$(node -p "require('./package.json').version")
+            TAG="v${VERSION}"
+            echo "tag=${TAG}" >> $GITHUB_OUTPUT
+
+            if git rev-parse "$TAG" >/dev/null 2>&1 && [ "${{ inputs.force }}" != "true" ]; then
+              echo "should_build=false" >> $GITHUB_OUTPUT
+              echo "Tag $TAG already exists and force=false — skipping."
+            else
+              git config user.name "github-actions[bot]"
+              git config user.email "github-actions[bot]@users.noreply.github.com"
+              # Delete existing tag if force
+              if git rev-parse "$TAG" >/dev/null 2>&1; then
+                git tag -d "$TAG"
+                git push origin ":refs/tags/$TAG" || true
+              fi
+              git tag "$TAG"
+              git push origin "$TAG"
+              echo "should_build=true" >> $GITHUB_OUTPUT
+              echo "Created and pushed tag $TAG"
+            fi
           fi
 
   build-mac:
     name: Build macOS
     runs-on: macos-latest
-    needs: [auto-tag]
-    if: always() && !cancelled() && (github.ref_type == 'tag' || needs.auto-tag.outputs.should_release == 'true')
+    needs: [check]
+    if: needs.check.outputs.should_build == 'true'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -57,7 +78,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
       - name: Install dependencies
         run: npm install
@@ -78,8 +98,8 @@ jobs:
   build-windows:
     name: Build Windows
     runs-on: windows-latest
-    needs: [auto-tag]
-    if: always() && !cancelled() && (github.ref_type == 'tag' || needs.auto-tag.outputs.should_release == 'true')
+    needs: [check]
+    if: needs.check.outputs.should_build == 'true'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -88,7 +108,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
       - name: Install dependencies
         run: npm install
@@ -108,8 +127,8 @@ jobs:
   build-linux:
     name: Build Linux
     runs-on: ubuntu-latest
-    needs: [auto-tag]
-    if: always() && !cancelled() && (github.ref_type == 'tag' || needs.auto-tag.outputs.should_release == 'true')
+    needs: [check]
+    if: needs.check.outputs.should_build == 'true'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -118,7 +137,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
       - name: Install dependencies
         run: npm install
@@ -144,23 +162,14 @@ jobs:
 
   release:
     name: Create GitHub Release
-    needs: [auto-tag, build-mac, build-windows, build-linux]
+    needs: [check, build-mac, build-windows, build-linux]
     runs-on: ubuntu-latest
-    if: always() && !cancelled() && needs.build-mac.result == 'success' && needs.build-windows.result == 'success' && needs.build-linux.result == 'success'
+    if: needs.build-mac.result == 'success' && needs.build-windows.result == 'success' && needs.build-linux.result == 'success'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Resolve tag name
-        id: resolve_tag
-        run: |
-          if [ "${{ github.ref_type }}" == "tag" ]; then
-            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
-          else
-            echo "tag=${{ needs.auto-tag.outputs.tag }}" >> $GITHUB_OUTPUT
-          fi
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -171,12 +180,12 @@ jobs:
       - name: Generate changelog
         id: changelog
         run: |
-          CURRENT_TAG="${{ steps.resolve_tag.outputs.tag }}"
-          PREV_TAG=$(git tag --sort=-version:refname | grep -v "^${CURRENT_TAG}$" | head -1)
+          TAG="${{ needs.check.outputs.tag }}"
+          PREV_TAG=$(git tag --sort=-version:refname | grep -v "^${TAG}$" | head -1)
           if [ -z "$PREV_TAG" ]; then
             CHANGELOG=$(git log --pretty=format:"- %s (%h)" HEAD)
           else
-            CHANGELOG=$(git log --pretty=format:"- %s (%h)" ${PREV_TAG}..HEAD)
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" "${PREV_TAG}..HEAD")
           fi
           echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
           echo "$CHANGELOG" >> $GITHUB_OUTPUT
@@ -185,8 +194,8 @@ jobs:
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.resolve_tag.outputs.tag }}
-          name: SessionLens ${{ steps.resolve_tag.outputs.tag }}
+          tag_name: ${{ needs.check.outputs.tag }}
+          name: SessionLens ${{ needs.check.outputs.tag }}
           body: |
             ## What's Changed
 
@@ -201,6 +210,6 @@ jobs:
             | Linux | `.AppImage`, `.deb` |
           files: artifacts/**/*
           draft: false
-          prerelease: ${{ contains(steps.resolve_tag.outputs.tag, '-beta') || contains(steps.resolve_tag.outputs.tag, '-alpha') || contains(steps.resolve_tag.outputs.tag, '-rc') }}
+          prerelease: ${{ contains(needs.check.outputs.tag, '-beta') || contains(needs.check.outputs.tag, '-alpha') || contains(needs.check.outputs.tag, '-rc') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
