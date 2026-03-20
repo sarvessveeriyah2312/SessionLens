@@ -11,15 +11,13 @@ permissions:
   contents: write
 
 jobs:
-  # Auto-tag main branch using version in package.json
   auto-tag:
     name: Auto-tag from package.json
     runs-on: ubuntu-latest
-    # Only run on branch push, not tag push
     if: github.ref_type == 'branch'
     outputs:
+      should_release: ${{ steps.tag.outputs.should_release }}
       tag: ${{ steps.tag.outputs.tag }}
-      already_tagged: ${{ steps.tag.outputs.already_tagged }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,32 +25,30 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Read version and create tag
+      - name: Create tag if version is new
         id: tag
         run: |
           VERSION=$(node -p "require('./package.json').version")
           TAG="v${VERSION}"
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
 
           if git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "already_tagged=true" >> $GITHUB_OUTPUT
             echo "Tag $TAG already exists — skipping release."
+            echo "should_release=false" >> $GITHUB_OUTPUT
           else
-            echo "already_tagged=false" >> $GITHUB_OUTPUT
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
             git tag "$TAG"
             git push origin "$TAG"
             echo "Created and pushed tag $TAG"
+            echo "should_release=true" >> $GITHUB_OUTPUT
           fi
 
   build-mac:
     name: Build macOS
     runs-on: macos-latest
-    needs: auto-tag
-    if: |
-      always() &&
-      (github.ref_type == 'tag' || needs.auto-tag.outputs.already_tagged == 'false')
+    needs: [auto-tag]
+    if: always() && !cancelled() && (github.ref_type == 'tag' || needs.auto-tag.outputs.should_release == 'true')
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -82,10 +78,8 @@ jobs:
   build-windows:
     name: Build Windows
     runs-on: windows-latest
-    needs: auto-tag
-    if: |
-      always() &&
-      (github.ref_type == 'tag' || needs.auto-tag.outputs.already_tagged == 'false')
+    needs: [auto-tag]
+    if: always() && !cancelled() && (github.ref_type == 'tag' || needs.auto-tag.outputs.should_release == 'true')
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -114,10 +108,8 @@ jobs:
   build-linux:
     name: Build Linux
     runs-on: ubuntu-latest
-    needs: auto-tag
-    if: |
-      always() &&
-      (github.ref_type == 'tag' || needs.auto-tag.outputs.already_tagged == 'false')
+    needs: [auto-tag]
+    if: always() && !cancelled() && (github.ref_type == 'tag' || needs.auto-tag.outputs.should_release == 'true')
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -154,11 +146,7 @@ jobs:
     name: Create GitHub Release
     needs: [auto-tag, build-mac, build-windows, build-linux]
     runs-on: ubuntu-latest
-    if: |
-      always() &&
-      needs.build-mac.result == 'success' &&
-      needs.build-windows.result == 'success' &&
-      needs.build-linux.result == 'success'
+    if: always() && !cancelled() && needs.build-mac.result == 'success' && needs.build-windows.result == 'success' && needs.build-linux.result == 'success'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
