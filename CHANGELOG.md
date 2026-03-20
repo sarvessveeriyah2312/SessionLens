@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/sarvessveeriyah2312/SessionLens/compare/v1.2.0...v1.3.0) (2026-03-20)
+
+
+### Features
+
+* Add initial README.md detailing project overview, features, development guide, and technical stack. ([c4e6cab](https://github.com/sarvessveeriyah2312/SessionLens/commit/c4e6cab8279c0b7f9721eabf42fe111ad5ba11f0))
+
 # [1.2.0](https://github.com/sarvessveeriyah2312/SessionLens/compare/v1.1.0...v1.2.0) (2026-03-20)
 
 
