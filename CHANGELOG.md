@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/sarvessveeriyah2312/SessionLens/compare/v1.4.0...v1.5.0) (2026-03-20)
+
+
+### Features
+
+* Add and configure application icons for Electron build, window, and macOS dock. ([6fda2fe](https://github.com/sarvessveeriyah2312/SessionLens/commit/6fda2fe4766703fff0005e7d3a86752258fb1777))
+
 # [1.4.0](https://github.com/sarvessveeriyah2312/SessionLens/compare/v1.3.0...v1.4.0) (2026-03-20)
 
 
