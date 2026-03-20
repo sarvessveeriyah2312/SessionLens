@@ -4,75 +4,62 @@ on:
   push:
     branches:
       - main
-    tags:
-      - 'v*.*.*'
-  workflow_dispatch:
-    inputs:
-      force:
-        description: 'Force release even if tag exists'
-        required: false
-        default: 'false'
-        type: choice
-        options: ['false', 'true']
 
 permissions:
   contents: write
+  issues: write
+  pull-requests: write
 
 jobs:
-  check:
-    name: Check & tag
+  # ── 1. semantic-release: analyse commits, bump version, create GitHub release ──
+  semantic-release:
+    name: Semantic Release
     runs-on: ubuntu-latest
     outputs:
-      should_build: ${{ steps.decide.outputs.should_build }}
-      tag: ${{ steps.decide.outputs.tag }}
+      new_release_published: ${{ steps.release.outputs.new_release_published }}
+      new_release_version: ${{ steps.release.outputs.new_release_version }}
+      new_release_git_tag: ${{ steps.release.outputs.new_release_git_tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: false
 
-      - name: Decide whether to build
-        id: decide
-        run: |
-          if [ "${{ github.ref_type }}" == "tag" ]; then
-            # Direct tag push — always build
-            echo "should_build=true" >> $GITHUB_OUTPUT
-            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
-            echo "Triggered by tag push: ${{ github.ref_name }}"
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
-          else
-            # Branch push or workflow_dispatch — auto-tag if version is new
-            VERSION=$(node -p "require('./package.json').version")
-            TAG="v${VERSION}"
-            echo "tag=${TAG}" >> $GITHUB_OUTPUT
+      - name: Install dependencies
+        run: npm install
 
-            if git rev-parse "$TAG" >/dev/null 2>&1 && [ "${{ inputs.force }}" != "true" ]; then
-              echo "should_build=false" >> $GITHUB_OUTPUT
-              echo "Tag $TAG already exists and force=false — skipping."
-            else
-              git config user.name "github-actions[bot]"
-              git config user.email "github-actions[bot]@users.noreply.github.com"
-              # Delete existing tag if force
-              if git rev-parse "$TAG" >/dev/null 2>&1; then
-                git tag -d "$TAG"
-                git push origin ":refs/tags/$TAG" || true
-              fi
-              git tag "$TAG"
-              git push origin "$TAG"
-              echo "should_build=true" >> $GITHUB_OUTPUT
-              echo "Created and pushed tag $TAG"
-            fi
-          fi
+      - name: Run semantic-release
+        id: release
+        uses: cycjimmy/semantic-release-action@v4
+        with:
+          semantic_version: 24
+          extra_plugins: |
+            @semantic-release/changelog@6
+            @semantic-release/git@10
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Release summary
+        if: steps.release.outputs.new_release_published == 'true'
+        run: echo "Released v${{ steps.release.outputs.new_release_version }}"
+
+  # ── 2. Build macOS ──
   build-mac:
     name: Build macOS
+    needs: semantic-release
+    if: needs.semantic-release.outputs.new_release_published == 'true'
     runs-on: macos-latest
-    needs: [check]
-    if: needs.check.outputs.should_build == 'true'
     steps:
-      - name: Checkout
+      - name: Checkout release tag
         uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.semantic-release.outputs.new_release_git_tag }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -88,21 +75,25 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: mac-artifacts
-          path: release/**/*.dmg
-          retention-days: 1
+          tag_name: ${{ needs.semantic-release.outputs.new_release_git_tag }}
+          files: release/**/*.dmg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  # ── 3. Build Windows ──
   build-windows:
     name: Build Windows
+    needs: semantic-release
+    if: needs.semantic-release.outputs.new_release_published == 'true'
     runs-on: windows-latest
-    needs: [check]
-    if: needs.check.outputs.should_build == 'true'
     steps:
-      - name: Checkout
+      - name: Checkout release tag
         uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.semantic-release.outputs.new_release_git_tag }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -117,21 +108,25 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: windows-artifacts
-          path: release/**/*.exe
-          retention-days: 1
+          tag_name: ${{ needs.semantic-release.outputs.new_release_git_tag }}
+          files: release/**/*.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  # ── 4. Build Linux ──
   build-linux:
     name: Build Linux
+    needs: semantic-release
+    if: needs.semantic-release.outputs.new_release_published == 'true'
     runs-on: ubuntu-latest
-    needs: [check]
-    if: needs.check.outputs.should_build == 'true'
     steps:
-      - name: Checkout
+      - name: Checkout release tag
         uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.semantic-release.outputs.new_release_git_tag }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -151,65 +146,12 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: linux-artifacts
-          path: |
-            release/**/*.AppImage
-            release/**/*.deb
-          retention-days: 1
-
-  release:
-    name: Create GitHub Release
-    needs: [check, build-mac, build-windows, build-linux]
-    runs-on: ubuntu-latest
-    if: needs.build-mac.result == 'success' && needs.build-windows.result == 'success' && needs.build-linux.result == 'success'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-          merge-multiple: true
-
-      - name: Generate changelog
-        id: changelog
-        run: |
-          TAG="${{ needs.check.outputs.tag }}"
-          PREV_TAG=$(git tag --sort=-version:refname | grep -v "^${TAG}$" | head -1)
-          if [ -z "$PREV_TAG" ]; then
-            CHANGELOG=$(git log --pretty=format:"- %s (%h)" HEAD)
-          else
-            CHANGELOG=$(git log --pretty=format:"- %s (%h)" "${PREV_TAG}..HEAD")
-          fi
-          echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
-          echo "$CHANGELOG" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: Create release
+      - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ needs.check.outputs.tag }}
-          name: SessionLens ${{ needs.check.outputs.tag }}
-          body: |
-            ## What's Changed
-
-            ${{ steps.changelog.outputs.CHANGELOG }}
-
-            ---
-            **Downloads**
-            | Platform | File |
-            |----------|------|
-            | macOS (Intel + Apple Silicon) | `.dmg` |
-            | Windows | `.exe` (NSIS installer) |
-            | Linux | `.AppImage`, `.deb` |
-          files: artifacts/**/*
-          draft: false
-          prerelease: ${{ contains(needs.check.outputs.tag, '-beta') || contains(needs.check.outputs.tag, '-alpha') || contains(needs.check.outputs.tag, '-rc') }}
+          tag_name: ${{ needs.semantic-release.outputs.new_release_git_tag }}
+          files: |
+            release/**/*.AppImage
+            release/**/*.deb
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,11 +1,11 @@
 name: CI
 
 on:
-  push:
-    branches-ignore:
-      - main
   pull_request:
     branches:
+      - main
+  push:
+    branches-ignore:
       - main
 
 jobs:
@@ -24,7 +24,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
       - name: Install dependencies
         run: npm install
@@ -32,5 +31,5 @@ jobs:
       - name: Type check
         run: npx tsc --noEmit
 
-      - name: Build (vite only, no packaging)
+      - name: Build
         run: npm run build
