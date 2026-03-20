@@ -87,6 +87,10 @@ function createWindow(): void {
     mainWindow!.show()
   })
 
+  mainWindow.on('closed', () => {
+    mainWindow = null
+  })
+
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url)
     return { action: 'deny' }
@@ -257,16 +261,20 @@ function setupIPC(): void {
   })
 }
 
+function isWindowAlive(): boolean {
+  return !!mainWindow && !mainWindow.isDestroyed() && !!mainWindow.webContents
+}
+
 function startPushUpdates(): void {
   sessionManager.on('sessions-updated', (sessions: SessionState[]) => {
-    if (mainWindow?.webContents) {
-      mainWindow.webContents.send('sessions:update', sessions)
+    if (isWindowAlive()) {
+      mainWindow!.webContents.send('sessions:update', sessions)
     }
 
     // Push cost update
     const summary = costCalculator.computeSummary(sessions)
-    if (mainWindow?.webContents) {
-      mainWindow.webContents.send('cost:update', summary)
+    if (isWindowAlive()) {
+      mainWindow!.webContents.send('cost:update', summary)
     }
 
     // Team sync write
@@ -299,8 +307,8 @@ function startPushUpdates(): void {
   })
 
   teamSync.start(store.get('team') as UserSettings['team'], (peers) => {
-    if (mainWindow?.webContents) {
-      mainWindow.webContents.send('team:peers-update', peers)
+    if (isWindowAlive()) {
+      mainWindow!.webContents.send('team:peers-update', peers)
     }
   })
 }
@@ -345,6 +353,10 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
+})
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[SessionLens] Unhandled rejection:', reason)
 })
 
 app.on('before-quit', () => {
