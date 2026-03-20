@@ -29,6 +29,7 @@ Thumbs.db
 # Electron
 out/
 release/
+electron.vite.config.*.mjs
 
 # TypeScript
 *.tsbuildinfo

@@ -66,12 +66,14 @@ function createTrayIcon(): nativeImage {
 }
 
 function createWindow(): void {
+  const iconPath = join(__dirname, '../../resources/icon.png')
   mainWindow = new BrowserWindow({
     width: 1100,
     height: 750,
     minWidth: 900,
     minHeight: 600,
     backgroundColor: '#0f0f0f',
+    icon: iconPath,
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -306,6 +308,10 @@ function startPushUpdates(): void {
 // ---- App lifecycle ----
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.sessionlens.app')
+
+  if (process.platform === 'darwin') {
+    app.dock.setIcon(join(__dirname, '../../resources/icon.png'))
+  }
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
