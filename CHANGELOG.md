@@ -1,3 +1,10 @@
+# [1.9.0](https://github.com/sarvessveeriyah2312/SessionLens/compare/v1.8.0...v1.9.0) (2026-03-27)
+
+
+### Features
+
+* Improve auto-updater by opening release URL in dev mode, adding an initial update check, and passing release URL to the download function. ([817bc7e](https://github.com/sarvessveeriyah2312/SessionLens/commit/817bc7e0d9afe7a9a8e680e59a211134083fa249))
+
 # [1.8.0](https://github.com/sarvessveeriyah2312/SessionLens/compare/v1.7.0...v1.8.0) (2026-03-27)
 
 
