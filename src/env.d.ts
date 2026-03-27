@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 
-import type { SessionState, TimelineEvent, CostSummary, PeerState, UserSettings } from '../electron/types'
+import type { SessionState, TimelineEvent, CostSummary, PeerState, UserSettings, UpdateInfo, ReleaseInfo } from '../electron/types'
 
 interface WindowApi {
   getSessions: () => Promise<SessionState[]>
@@ -19,6 +19,12 @@ interface WindowApi {
   onSessionsUpdate: (callback: (sessions: SessionState[]) => void) => (() => void)
   onCostUpdate: (callback: (summary: CostSummary) => void) => (() => void)
   onPeersUpdate: (callback: (peers: PeerState[]) => void) => (() => void)
+  // Updates
+  getAppVersion: () => Promise<string>
+  checkForUpdates: () => Promise<UpdateInfo>
+  getReleaseHistory: () => Promise<ReleaseInfo[]>
+  openExternal: (url: string) => Promise<void>
+  onUpdateAvailable: (callback: (info: UpdateInfo) => void) => (() => void)
 }
 
 declare global {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import type { UserSettings } from '../../../electron/types'
+import type { UserSettings, UpdateInfo, ReleaseInfo } from '../../../electron/types'
 
 const COLORS = [
   '#00f5ff', '#22c55e', '#3b82f6', '#8b5cf6',
@@ -26,6 +26,13 @@ export default function Settings({ onTeamToggle }: SettingsProps): React.JSX.Ele
   })
   const [saved, setSaved] = useState(false)
   const [activeSection, setActiveSection] = useState('general')
+  const [appVersion, setAppVersion] = useState('')
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null)
+  const [checkingUpdate, setCheckingUpdate] = useState(false)
+  const [showUpdateModal, setShowUpdateModal] = useState(false)
+  const [showHistoryModal, setShowHistoryModal] = useState(false)
+  const [releaseHistory, setReleaseHistory] = useState<ReleaseInfo[]>([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -38,7 +45,45 @@ export default function Settings({ onTeamToggle }: SettingsProps): React.JSX.Ele
 
   useEffect(() => {
     load()
+    window.api?.getAppVersion?.().then((v) => setAppVersion(v)).catch(() => {})
+
+    // Auto-check on mount — always resolves so badge always shows
+    setCheckingUpdate(true)
+    window.api?.checkForUpdates?.()
+      .then((info) => { if (info) setUpdateInfo(info) })
+      .catch(() => {})
+      .finally(() => setCheckingUpdate(false))
+
+    // Also accept push from main process (fires ~5s after launch if update found)
+    const unsub = window.api?.onUpdateAvailable?.((info) => setUpdateInfo(info))
+    return () => unsub?.()
   }, [load])
+
+  const handleOpenHistory = async (): Promise<void> => {
+    setShowHistoryModal(true)
+    if (releaseHistory.length > 0) return
+    setLoadingHistory(true)
+    try {
+      const history = await window.api.getReleaseHistory()
+      setReleaseHistory(history)
+    } catch {
+      // ignore
+    } finally {
+      setLoadingHistory(false)
+    }
+  }
+
+  const handleCheckForUpdates = async (): Promise<void> => {
+    setCheckingUpdate(true)
+    try {
+      const info = await window.api?.checkForUpdates?.()
+      if (info) setUpdateInfo(info)
+    } catch {
+      // ignore
+    } finally {
+      setCheckingUpdate(false)
+    }
+  }
 
   const save = async (): Promise<void> => {
     try {
@@ -68,7 +113,7 @@ export default function Settings({ onTeamToggle }: SettingsProps): React.JSX.Ele
     { id: 'budget', label: 'Budget' },
     { id: 'notifications', label: 'Notifications' },
     { id: 'team', label: 'Team Mode' },
-    { id: 'about', label: 'About' }
+    { id: 'about', label: 'About', badge: updateInfo?.available }
   ]
 
   return (
@@ -110,7 +155,7 @@ export default function Settings({ onTeamToggle }: SettingsProps): React.JSX.Ele
                 key={section.id}
                 onClick={() => setActiveSection(section.id)}
                 className={`
-                  w-full flex items-center px-3 py-2 rounded-lg text-sm transition-all duration-200
+                  w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-all duration-200
                   ${activeSection === section.id
                     ? 'bg-gradient-to-r from-[#00f5ff]/20 to-[#00a3cc]/20 text-[#00f5ff] border border-[#00f5ff]/30'
                     : 'text-gray-500 hover:text-gray-300 hover:bg-[#1a1e2c]'
@@ -118,6 +163,12 @@ export default function Settings({ onTeamToggle }: SettingsProps): React.JSX.Ele
                 `}
               >
                 <span className="font-medium">{section.label}</span>
+                {section.badge && (
+                  <span className="flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse inline-block" />
+                    Update
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -315,16 +366,94 @@ export default function Settings({ onTeamToggle }: SettingsProps): React.JSX.Ele
             {activeSection === 'about' && (
               <Section title="About SessionLens" description="Application information">
                 <div className="space-y-4">
-                  <div className="p-4 bg-gradient-to-br from-[#12141c] to-[#0a0c12] rounded-xl border border-[#252a38]">
-                    <div className="text-lg font-semibold text-white">SessionLens</div>
-                    <div className="text-xs text-gray-500 mt-1">Version 2.0.0</div>
-                  </div>
+                  {/* Version card — click to view release history */}
+                  <button
+                    onClick={handleOpenHistory}
+                    className="w-full p-4 bg-gradient-to-br from-[#12141c] to-[#0a0c12] rounded-xl border border-[#252a38] hover:border-[#00f5ff]/40 hover:from-[#12141c] hover:to-[#0d0f1a] flex items-start justify-between gap-4 transition-all duration-200 group text-left"
+                  >
+                    <div>
+                      <div className="text-lg font-semibold text-white">SessionLens</div>
+                      <div className="text-xs text-gray-500 mt-1 font-mono">
+                        v{appVersion || '…'}
+                        <span className="ml-2 text-gray-700 group-hover:text-[#00f5ff]/50 transition-colors">
+                          · view release history
+                        </span>
+                      </div>
+                    </div>
+                    {/* Update status badge — always visible */}
+                    <div className="flex-shrink-0">
+                      {checkingUpdate ? (
+                        <div className="flex items-center gap-1.5 text-xs px-2 py-1 rounded-lg border border-[#252a38] text-gray-500">
+                          <span className="w-3 h-3 border border-gray-600 border-t-gray-400 rounded-full animate-spin" />
+                          Checking…
+                        </div>
+                      ) : updateInfo ? (
+                        <div className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-lg border font-medium ${
+                          updateInfo.available
+                            ? 'bg-amber-500/10 text-amber-400 border-amber-500/40'
+                            : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                        }`}>
+                          {updateInfo.available ? (
+                            <>
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                              v{updateInfo.latestVersion} available
+                            </>
+                          ) : (
+                            <>
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                              Up to date
+                            </>
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
+                  </button>
 
-                  <div className="space-y-2">
-                    <div className="text-sm text-gray-400">Monitors Claude Code sessions in real time</div>
-                    <div className="text-sm text-gray-400">Data stored locally in SQLite</div>
-                    <div className="text-sm text-gray-400">No data sent to any external servers</div>
-                    <div className="text-sm text-gray-400">Real-time analytics and cost tracking</div>
+                  {/* Update available banner */}
+                  {updateInfo?.available && (
+                    <div className="p-4 bg-amber-500/5 border border-amber-500/30 rounded-xl space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-sm font-semibold text-amber-400">
+                            Version {updateInfo.latestVersion} is available
+                          </div>
+                          {updateInfo.publishedAt && (
+                            <div className="text-xs text-gray-500 mt-0.5">
+                              Released {new Date(updateInfo.publishedAt).toLocaleDateString()}
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => setShowUpdateModal(true)}
+                          className="px-4 py-1.5 text-xs font-semibold rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/40 hover:bg-amber-500/30 transition-all"
+                        >
+                          View Update
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Check for updates button */}
+                  <div className="pt-2">
+                    <button
+                      onClick={handleCheckForUpdates}
+                      disabled={checkingUpdate}
+                      className="flex items-center gap-2 px-4 py-2 text-xs font-medium rounded-lg border border-[#252a38] text-gray-400 hover:text-[#00f5ff] hover:border-[#00f5ff]/40 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {checkingUpdate ? (
+                        <>
+                          <span className="w-3 h-3 border border-[#00f5ff]/50 border-t-[#00f5ff] rounded-full animate-spin" />
+                          Checking…
+                        </>
+                      ) : (
+                        'Check for Updates'
+                      )}
+                    </button>
+                    {updateInfo && !updateInfo.available && (
+                      <div className="mt-2 text-xs text-emerald-400">
+                        You are on the latest version.
+                      </div>
+                    )}
                   </div>
 
                   <div className="pt-4 border-t border-[#252a38] text-xs text-gray-600">
@@ -334,7 +463,279 @@ export default function Settings({ onTeamToggle }: SettingsProps): React.JSX.Ele
                 </div>
               </Section>
             )}
+
           </div>
+        </div>
+      </div>
+
+      {/* Release History Modal */}
+      {showHistoryModal && (
+        <ReleaseHistoryModal
+          releases={releaseHistory}
+          loading={loadingHistory}
+          currentVersion={appVersion}
+          onClose={() => setShowHistoryModal(false)}
+          onOpenRelease={(url) => window.api.openExternal(url)}
+        />
+      )}
+
+      {/* Update Modal — rendered outside scroll container so backdrop covers full window */}
+      {showUpdateModal && updateInfo?.available && (
+        <UpdateModal
+          info={updateInfo}
+          onClose={() => setShowUpdateModal(false)}
+          onInstall={() => {
+            window.api.openExternal(updateInfo.releaseUrl)
+            setShowUpdateModal(false)
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+// ── Release History Modal ────────────────────────────────────────────────────
+
+function ReleaseHistoryModal({
+  releases,
+  loading,
+  currentVersion,
+  onClose,
+  onOpenRelease
+}: {
+  releases: ReleaseInfo[]
+  loading: boolean
+  currentVersion: string
+  onClose: () => void
+  onOpenRelease: (url: string) => void
+}): React.JSX.Element {
+  const [expanded, setExpanded] = useState<string | null>(releases[0]?.version ?? null)
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-6"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+
+      <div className="relative w-full max-w-lg bg-gradient-to-br from-[#12141c] to-[#0a0c12] border border-[#252a38] rounded-2xl shadow-2xl shadow-black/60 overflow-hidden flex flex-col max-h-[80vh]">
+        <div className="h-[2px] bg-gradient-to-r from-transparent via-[#00f5ff]/60 to-transparent" />
+
+        {/* Header */}
+        <div className="px-6 pt-5 pb-4 flex items-center justify-between flex-shrink-0 border-b border-[#1e2233]">
+          <div>
+            <div className="text-base font-bold text-white">Release History</div>
+            <div className="text-xs text-gray-500 mt-0.5">SessionLens — all versions</div>
+          </div>
+          <button onClick={onClose} className="text-gray-600 hover:text-gray-300 transition-colors text-lg leading-none">
+            ✕
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="overflow-y-auto flex-1 px-4 py-3 space-y-2">
+          {loading && (
+            <div className="flex items-center justify-center py-10 gap-3 text-gray-500 text-sm">
+              <span className="w-4 h-4 border border-[#00f5ff]/40 border-t-[#00f5ff] rounded-full animate-spin" />
+              Loading releases…
+            </div>
+          )}
+
+          {!loading && releases.length === 0 && (
+            <div className="text-center py-10 text-sm text-gray-600">
+              No releases found on GitHub.
+            </div>
+          )}
+
+          {!loading && releases.map((release) => {
+            const isCurrent = release.version === currentVersion
+            const isOpen = expanded === release.version
+            const changelogLines = release.changelog.split('\n').map((l) => l.trim()).filter(Boolean)
+
+            return (
+              <div
+                key={release.version}
+                className={`rounded-xl border transition-all duration-200 overflow-hidden ${
+                  isCurrent
+                    ? 'border-[#00f5ff]/30 bg-[#00f5ff]/5'
+                    : 'border-[#1e2233] bg-[#0a0c12]/60'
+                }`}
+              >
+                {/* Row header */}
+                <button
+                  className="w-full flex items-center justify-between px-4 py-3 text-left"
+                  onClick={() => setExpanded(isOpen ? null : release.version)}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className={`font-mono text-sm font-semibold ${isCurrent ? 'text-[#00f5ff]' : 'text-white'}`}>
+                      v{release.version}
+                    </span>
+                    {isCurrent && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#00f5ff]/15 text-[#00f5ff] border border-[#00f5ff]/30 font-medium">
+                        current
+                      </span>
+                    )}
+                    {release.publishedAt && (
+                      <span className="text-xs text-gray-600">
+                        {new Date(release.publishedAt).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onOpenRelease(release.releaseUrl) }}
+                      className="text-[10px] text-gray-600 hover:text-[#00f5ff] transition-colors px-2 py-0.5 rounded border border-transparent hover:border-[#00f5ff]/20"
+                    >
+                      GitHub ↗
+                    </button>
+                    <span className={`text-gray-600 text-xs transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>
+                      ▾
+                    </span>
+                  </div>
+                </button>
+
+                {/* Changelog */}
+                {isOpen && (
+                  <div className="px-4 pb-4 pt-1 border-t border-[#1e2233] space-y-1">
+                    {changelogLines.length > 0 ? (
+                      changelogLines.map((line, i) => {
+                        if (line.startsWith('## ') || line.startsWith('# ')) {
+                          return (
+                            <div key={i} className="text-xs font-semibold text-[#00f5ff] pt-2 first:pt-0">
+                              {line.replace(/^#+\s*/, '')}
+                            </div>
+                          )
+                        }
+                        if (line.startsWith('- ') || line.startsWith('* ')) {
+                          return (
+                            <div key={i} className="text-xs text-gray-400 flex gap-2">
+                              <span className="text-gray-600 flex-shrink-0">·</span>
+                              <span>{line.replace(/^[-*]\s*/, '')}</span>
+                            </div>
+                          )
+                        }
+                        return <div key={i} className="text-xs text-gray-600">{line}</div>
+                      })
+                    ) : (
+                      <div className="text-xs text-gray-700 italic">No changelog provided.</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-[#1e2233] flex-shrink-0 flex justify-end">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm rounded-xl border border-[#252a38] text-gray-500 hover:text-gray-300 hover:border-[#3a3f54] transition-all"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Update Modal ─────────────────────────────────────────────────────────────
+
+function UpdateModal({
+  info,
+  onClose,
+  onInstall
+}: {
+  info: UpdateInfo
+  onClose: () => void
+  onInstall: () => void
+}): React.JSX.Element {
+  // Parse changelog: treat lines starting with ## or * or - as markdown-ish
+  const changelogLines = info.changelog
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean)
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-6"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+    >
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+
+      {/* Modal */}
+      <div className="relative w-full max-w-lg bg-gradient-to-br from-[#12141c] to-[#0a0c12] border border-[#252a38] rounded-2xl shadow-2xl shadow-black/60 overflow-hidden">
+        {/* Top accent line */}
+        <div className="h-[2px] bg-gradient-to-r from-amber-500/60 via-amber-400 to-amber-500/60" />
+
+        {/* Header */}
+        <div className="px-6 pt-5 pb-4 flex items-start justify-between gap-4">
+          <div>
+            <div className="text-base font-bold text-white">Update Available</div>
+            <div className="text-xs text-gray-500 mt-0.5">
+              v{info.currentVersion} &rarr; <span className="text-amber-400 font-semibold">v{info.latestVersion}</span>
+              {info.publishedAt && (
+                <span className="ml-2 text-gray-600">
+                  · Released {new Date(info.publishedAt).toLocaleDateString()}
+                </span>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-600 hover:text-gray-300 transition-colors text-lg leading-none mt-0.5"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Changelog */}
+        <div className="px-6 pb-4">
+          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+            What&apos;s new
+          </div>
+          <div className="bg-[#0a0c12] border border-[#1e2233] rounded-xl p-4 max-h-56 overflow-y-auto space-y-1.5 font-mono text-xs">
+            {changelogLines.length > 0 ? (
+              changelogLines.map((line, i) => {
+                if (line.startsWith('## ') || line.startsWith('# ')) {
+                  return (
+                    <div key={i} className="text-[#00f5ff] font-semibold pt-1">
+                      {line.replace(/^#+\s*/, '')}
+                    </div>
+                  )
+                }
+                if (line.startsWith('- ') || line.startsWith('* ')) {
+                  return (
+                    <div key={i} className="text-gray-300 flex gap-2">
+                      <span className="text-amber-400 flex-shrink-0">·</span>
+                      <span>{line.replace(/^[-*]\s*/, '')}</span>
+                    </div>
+                  )
+                }
+                return <div key={i} className="text-gray-500">{line}</div>
+              })
+            ) : (
+              <div className="text-gray-600 italic">No changelog provided.</div>
+            )}
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="px-6 pb-5 flex gap-3 justify-end">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm rounded-xl border border-[#252a38] text-gray-500 hover:text-gray-300 hover:border-[#3a3f54] transition-all"
+          >
+            Later
+          </button>
+          <button
+            onClick={onInstall}
+            className="px-5 py-2 text-sm font-semibold rounded-xl bg-gradient-to-r from-amber-500/20 to-amber-600/20 text-amber-400 border border-amber-500/40 hover:from-amber-500/30 hover:to-amber-600/30 transition-all"
+          >
+            Download Update
+          </button>
         </div>
       </div>
     </div>

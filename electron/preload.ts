@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { SessionState, TimelineEvent, CostSummary, PeerState, UserSettings } from './types'
+import type { SessionState, TimelineEvent, CostSummary, PeerState, UserSettings, UpdateInfo } from './types'
 
 const api = {
   // Sessions
@@ -52,6 +52,21 @@ const api = {
     text: string
   ): Promise<{ success: boolean }> =>
     ipcRenderer.invoke('timeline:add-annotation', sessionId, text),
+
+  // Updates
+  getAppVersion: (): Promise<string> => ipcRenderer.invoke('updates:get-version'),
+
+  checkForUpdates: (): Promise<UpdateInfo> => ipcRenderer.invoke('updates:check'),
+
+  getReleaseHistory: (): Promise<import('./types').ReleaseInfo[]> => ipcRenderer.invoke('updates:get-history'),
+
+  openExternal: (url: string): Promise<void> => ipcRenderer.invoke('shell:open-external', url),
+
+  onUpdateAvailable: (callback: (info: UpdateInfo) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, info: UpdateInfo): void => callback(info)
+    ipcRenderer.on('updates:available', listener)
+    return () => ipcRenderer.removeListener('updates:available', listener)
+  },
 
   // Event listeners
   onSessionsUpdate: (callback: (sessions: SessionState[]) => void): (() => void) => {

@@ -22,6 +22,7 @@ import {
   getAllSessions,
   pruneOldTimeline
 } from './database'
+import { checkForUpdates, fetchReleaseHistory } from './UpdateChecker'
 import type { UserSettings, SessionState } from './types'
 
 // ---- Store ----
@@ -259,6 +260,24 @@ function setupIPC(): void {
     timelineRecorder.addAnnotation(sessionId, text)
     return { success: true }
   })
+
+  // App version
+  ipcMain.handle('updates:get-version', () => app.getVersion())
+
+  // Check for updates (on demand)
+  ipcMain.handle('updates:check', async () => {
+    return checkForUpdates()
+  })
+
+  // Fetch all release history
+  ipcMain.handle('updates:get-history', async () => {
+    return fetchReleaseHistory()
+  })
+
+  // Open external URL (used by update modal)
+  ipcMain.handle('shell:open-external', (_event, url: string) => {
+    shell.openExternal(url)
+  })
 }
 
 function isWindowAlive(): boolean {
@@ -335,6 +354,18 @@ app.whenReady().then(() => {
   sessionManager.start(settings.refreshInterval)
   timelineRecorder.start(() => sessionManager.getSessions(), 30_000)
   startPushUpdates()
+
+  // Check for updates 5 seconds after launch (non-blocking)
+  setTimeout(async () => {
+    try {
+      const info = await checkForUpdates()
+      if (info.available && isWindowAlive()) {
+        mainWindow!.webContents.send('updates:available', info)
+      }
+    } catch {
+      // Silently ignore — network may be unavailable
+    }
+  }, 5_000)
 
   // Prune old timeline data periodically
   setInterval(

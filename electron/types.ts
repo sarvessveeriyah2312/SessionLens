@@ -68,6 +68,23 @@ export interface UserSettings {
   }
 }
 
+export interface ReleaseInfo {
+  version: string
+  name: string
+  changelog: string
+  releaseUrl: string
+  publishedAt: string
+}
+
+export interface UpdateInfo {
+  available: boolean
+  currentVersion: string
+  latestVersion: string
+  changelog: string
+  releaseUrl: string
+  publishedAt: string
+}
+
 export interface ProcessInfo {
   pid: number
   sessionId: string
