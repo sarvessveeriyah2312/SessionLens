@@ -33,9 +33,9 @@ export interface JonlUsage {
 
 const CLAUDE_DIR = join(homedir(), '.claude')
 
-/** /Users/foo/bar  →  -Users-foo-bar */
+/** /Users/foo/bar  →  -Users-foo-bar  |  C:\Users\foo\bar  →  C--Users-foo-bar */
 export function encodeProjectPath(cwd: string): string {
-  return cwd.replace(/\//g, '-')
+  return cwd.replace(/[/\\:]/g, '-')
 }
 
 export class ProcessDetector {
@@ -165,14 +165,19 @@ export class ProcessDetector {
   async getProcessStats(pid: number): Promise<ProcessStats> {
     try {
       if (process.platform === 'win32') {
+        // wmic is deprecated/removed in Windows 11 — use tasklist instead
         const { stdout } = await execAsync(
-          `wmic process where ProcessId=${pid} get WorkingSetSize,PercentProcessorTime /format:csv`
+          `tasklist /FI "PID eq ${pid}" /FO CSV /NH`
         )
-        const parts = stdout.trim().split('\n').pop()?.split(',') ?? []
+        const line = stdout.trim().split('\n').pop() ?? ''
+        // alive if output looks like a CSV row (starts with a quoted name)
+        const alive = line.startsWith('"') && line.includes(`"${pid}"`)
+        const memMatch = line.match(/"([\d,]+)\s+K"/)
+        const memKb = memMatch ? parseInt(memMatch[1].replace(/,/g, '')) : 0
         return {
-          cpu: parseFloat(parts[1] ?? '0') || 0,
-          memoryMb: Math.round(parseInt(parts[2] ?? '0') / 1_048_576),
-          alive: parts.length > 1
+          cpu: 0, // tasklist does not expose CPU %
+          memoryMb: Math.round(memKb / 1024),
+          alive
         }
       } else {
         const { stdout } = await execAsync(
