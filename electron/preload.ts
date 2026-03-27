@@ -68,6 +68,30 @@ const api = {
     return () => ipcRenderer.removeListener('updates:available', listener)
   },
 
+  // Auto-updater
+  downloadUpdate: (): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('updater:download'),
+
+  installUpdate: (): Promise<void> => ipcRenderer.invoke('updater:install'),
+
+  onDownloadProgress: (callback: (p: { percent: number; bytesPerSecond: number; transferred: number; total: number }) => void): (() => void) => {
+    const listener = (_e: Electron.IpcRendererEvent, p: { percent: number; bytesPerSecond: number; transferred: number; total: number }): void => callback(p)
+    ipcRenderer.on('updater:progress', listener)
+    return () => ipcRenderer.removeListener('updater:progress', listener)
+  },
+
+  onUpdateDownloaded: (callback: (info: { version: string }) => void): (() => void) => {
+    const listener = (_e: Electron.IpcRendererEvent, info: { version: string }): void => callback(info)
+    ipcRenderer.on('updater:downloaded', listener)
+    return () => ipcRenderer.removeListener('updater:downloaded', listener)
+  },
+
+  onUpdaterError: (callback: (msg: string) => void): (() => void) => {
+    const listener = (_e: Electron.IpcRendererEvent, msg: string): void => callback(msg)
+    ipcRenderer.on('updater:error', listener)
+    return () => ipcRenderer.removeListener('updater:error', listener)
+  },
+
   // Event listeners
   onSessionsUpdate: (callback: (sessions: SessionState[]) => void): (() => void) => {
     const listener = (_event: Electron.IpcRendererEvent, sessions: SessionState[]): void =>

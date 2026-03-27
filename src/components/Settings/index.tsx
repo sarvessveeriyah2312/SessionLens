@@ -484,10 +484,6 @@ export default function Settings({ onTeamToggle }: SettingsProps): React.JSX.Ele
         <UpdateModal
           info={updateInfo}
           onClose={() => setShowUpdateModal(false)}
-          onInstall={() => {
-            window.api.openExternal(updateInfo.releaseUrl)
-            setShowUpdateModal(false)
-          }}
         />
       )}
     </div>
@@ -642,100 +638,189 @@ function ReleaseHistoryModal({
 
 // ── Update Modal ─────────────────────────────────────────────────────────────
 
+type DownloadPhase = 'idle' | 'downloading' | 'ready' | 'error'
+
 function UpdateModal({
   info,
-  onClose,
-  onInstall
+  onClose
 }: {
   info: UpdateInfo
   onClose: () => void
-  onInstall: () => void
 }): React.JSX.Element {
-  // Parse changelog: treat lines starting with ## or * or - as markdown-ish
-  const changelogLines = info.changelog
-    .split('\n')
-    .map((l) => l.trim())
-    .filter(Boolean)
+  const [phase, setPhase] = useState<DownloadPhase>('idle')
+  const [progress, setProgress] = useState(0)
+  const [speed, setSpeed] = useState(0)
+  const [errorMsg, setErrorMsg] = useState('')
+
+  useEffect(() => {
+    const unsubProgress = window.api.onDownloadProgress((p) => {
+      setProgress(p.percent)
+      setSpeed(p.bytesPerSecond)
+    })
+    const unsubDone = window.api.onUpdateDownloaded(() => setPhase('ready'))
+    const unsubErr = window.api.onUpdaterError((msg) => {
+      setPhase('error')
+      setErrorMsg(msg)
+    })
+    return () => { unsubProgress(); unsubDone(); unsubErr() }
+  }, [])
+
+  const handleDownload = async (): Promise<void> => {
+    setPhase('downloading')
+    setProgress(0)
+    const result = await window.api.downloadUpdate()
+    if (!result.success) {
+      setPhase('error')
+      setErrorMsg(result.error ?? 'Download failed')
+    }
+  }
+
+  const handleInstall = (): void => {
+    window.api.installUpdate()
+  }
+
+  const changelogLines = info.changelog.split('\n').map((l) => l.trim()).filter(Boolean)
+
+  const formatSpeed = (bps: number): string => {
+    if (bps > 1_000_000) return `${(bps / 1_000_000).toFixed(1)} MB/s`
+    if (bps > 1_000) return `${(bps / 1_000).toFixed(0)} KB/s`
+    return `${bps} B/s`
+  }
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-6"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+      onClick={(e) => { if (e.target === e.currentTarget && phase !== 'downloading') onClose() }}
     >
-      {/* Backdrop */}
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
 
-      {/* Modal */}
       <div className="relative w-full max-w-lg bg-gradient-to-br from-[#12141c] to-[#0a0c12] border border-[#252a38] rounded-2xl shadow-2xl shadow-black/60 overflow-hidden">
-        {/* Top accent line */}
         <div className="h-[2px] bg-gradient-to-r from-amber-500/60 via-amber-400 to-amber-500/60" />
 
         {/* Header */}
         <div className="px-6 pt-5 pb-4 flex items-start justify-between gap-4">
           <div>
-            <div className="text-base font-bold text-white">Update Available</div>
+            <div className="text-base font-bold text-white">
+              {phase === 'ready' ? 'Ready to Install' : 'Update Available'}
+            </div>
             <div className="text-xs text-gray-500 mt-0.5">
               v{info.currentVersion} &rarr; <span className="text-amber-400 font-semibold">v{info.latestVersion}</span>
               {info.publishedAt && (
                 <span className="ml-2 text-gray-600">
-                  · Released {new Date(info.publishedAt).toLocaleDateString()}
+                  · {new Date(info.publishedAt).toLocaleDateString()}
                 </span>
               )}
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-600 hover:text-gray-300 transition-colors text-lg leading-none mt-0.5"
-          >
-            ✕
-          </button>
+          {phase !== 'downloading' && (
+            <button onClick={onClose} className="text-gray-600 hover:text-gray-300 transition-colors text-lg leading-none mt-0.5">
+              ✕
+            </button>
+          )}
         </div>
 
         {/* Changelog */}
         <div className="px-6 pb-4">
-          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-            What&apos;s new
-          </div>
-          <div className="bg-[#0a0c12] border border-[#1e2233] rounded-xl p-4 max-h-56 overflow-y-auto space-y-1.5 font-mono text-xs">
-            {changelogLines.length > 0 ? (
-              changelogLines.map((line, i) => {
-                if (line.startsWith('## ') || line.startsWith('# ')) {
-                  return (
-                    <div key={i} className="text-[#00f5ff] font-semibold pt-1">
-                      {line.replace(/^#+\s*/, '')}
-                    </div>
-                  )
-                }
-                if (line.startsWith('- ') || line.startsWith('* ')) {
-                  return (
-                    <div key={i} className="text-gray-300 flex gap-2">
-                      <span className="text-amber-400 flex-shrink-0">·</span>
-                      <span>{line.replace(/^[-*]\s*/, '')}</span>
-                    </div>
-                  )
-                }
-                return <div key={i} className="text-gray-500">{line}</div>
-              })
-            ) : (
+          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">What&apos;s new</div>
+          <div className="bg-[#0a0c12] border border-[#1e2233] rounded-xl p-4 max-h-44 overflow-y-auto space-y-1.5 font-mono text-xs">
+            {changelogLines.length > 0 ? changelogLines.map((line, i) => {
+              if (line.startsWith('## ') || line.startsWith('# ')) {
+                return <div key={i} className="text-[#00f5ff] font-semibold pt-1">{line.replace(/^#+\s*/, '')}</div>
+              }
+              if (line.startsWith('- ') || line.startsWith('* ')) {
+                return (
+                  <div key={i} className="text-gray-300 flex gap-2">
+                    <span className="text-amber-400 flex-shrink-0">·</span>
+                    <span>{line.replace(/^[-*]\s*/, '')}</span>
+                  </div>
+                )
+              }
+              return <div key={i} className="text-gray-500">{line}</div>
+            }) : (
               <div className="text-gray-600 italic">No changelog provided.</div>
             )}
           </div>
         </div>
 
+        {/* Download progress bar */}
+        {phase === 'downloading' && (
+          <div className="px-6 pb-4">
+            <div className="flex items-center justify-between text-xs text-gray-500 mb-1.5">
+              <span>Downloading update…</span>
+              <span className="font-mono">{progress}% · {formatSpeed(speed)}</span>
+            </div>
+            <div className="h-2 bg-[#1e2233] rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-amber-500 to-amber-400 rounded-full transition-all duration-300"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Error */}
+        {phase === 'error' && (
+          <div className="px-6 pb-4">
+            <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-xs text-red-400">
+              {errorMsg || 'Download failed. Please try again.'}
+            </div>
+          </div>
+        )}
+
+        {/* Ready to install */}
+        {phase === 'ready' && (
+          <div className="px-6 pb-4">
+            <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs text-emerald-400 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0" />
+              Download complete. The app will restart to apply the update.
+            </div>
+          </div>
+        )}
+
         {/* Actions */}
         <div className="px-6 pb-5 flex gap-3 justify-end">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-sm rounded-xl border border-[#252a38] text-gray-500 hover:text-gray-300 hover:border-[#3a3f54] transition-all"
-          >
-            Later
-          </button>
-          <button
-            onClick={onInstall}
-            className="px-5 py-2 text-sm font-semibold rounded-xl bg-gradient-to-r from-amber-500/20 to-amber-600/20 text-amber-400 border border-amber-500/40 hover:from-amber-500/30 hover:to-amber-600/30 transition-all"
-          >
-            Download Update
-          </button>
+          {phase !== 'downloading' && (
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-sm rounded-xl border border-[#252a38] text-gray-500 hover:text-gray-300 hover:border-[#3a3f54] transition-all"
+            >
+              {phase === 'ready' ? 'Later' : 'Skip'}
+            </button>
+          )}
+
+          {phase === 'idle' && (
+            <button
+              onClick={handleDownload}
+              className="px-5 py-2 text-sm font-semibold rounded-xl bg-gradient-to-r from-amber-500/20 to-amber-600/20 text-amber-400 border border-amber-500/40 hover:from-amber-500/30 hover:to-amber-600/30 transition-all"
+            >
+              Download Update
+            </button>
+          )}
+
+          {phase === 'downloading' && (
+            <div className="px-5 py-2 text-sm text-gray-500 flex items-center gap-2">
+              <span className="w-3.5 h-3.5 border border-amber-500/40 border-t-amber-400 rounded-full animate-spin" />
+              Downloading…
+            </div>
+          )}
+
+          {phase === 'error' && (
+            <button
+              onClick={handleDownload}
+              className="px-5 py-2 text-sm font-semibold rounded-xl bg-gradient-to-r from-amber-500/20 to-amber-600/20 text-amber-400 border border-amber-500/40 hover:from-amber-500/30 hover:to-amber-600/30 transition-all"
+            >
+              Retry
+            </button>
+          )}
+
+          {phase === 'ready' && (
+            <button
+              onClick={handleInstall}
+              className="px-5 py-2 text-sm font-semibold rounded-xl bg-gradient-to-r from-emerald-500/20 to-emerald-600/20 text-emerald-400 border border-emerald-500/40 hover:from-emerald-500/30 hover:to-emerald-600/30 transition-all"
+            >
+              Restart &amp; Install
+            </button>
+          )}
         </div>
       </div>
     </div>

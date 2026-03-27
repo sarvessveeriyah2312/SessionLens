@@ -25,6 +25,11 @@ interface WindowApi {
   getReleaseHistory: () => Promise<ReleaseInfo[]>
   openExternal: (url: string) => Promise<void>
   onUpdateAvailable: (callback: (info: UpdateInfo) => void) => (() => void)
+  downloadUpdate: () => Promise<{ success: boolean; error?: string }>
+  installUpdate: () => Promise<void>
+  onDownloadProgress: (callback: (p: { percent: number; bytesPerSecond: number; transferred: number; total: number }) => void) => (() => void)
+  onUpdateDownloaded: (callback: (info: { version: string }) => void) => (() => void)
+  onUpdaterError: (callback: (msg: string) => void) => (() => void)
 }
 
 declare global {

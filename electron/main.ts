@@ -23,6 +23,7 @@ import {
   pruneOldTimeline
 } from './database'
 import { checkForUpdates, fetchReleaseHistory } from './UpdateChecker'
+import { setupAutoUpdater } from './AutoUpdater'
 import type { UserSettings, SessionState } from './types'
 
 // ---- Store ----
@@ -354,6 +355,9 @@ app.whenReady().then(() => {
   sessionManager.start(settings.refreshInterval)
   timelineRecorder.start(() => sessionManager.getSessions(), 30_000)
   startPushUpdates()
+
+  // Setup electron-updater (handles download + install)
+  setupAutoUpdater(() => mainWindow)
 
   // Check for updates 5 seconds after launch (non-blocking)
   setTimeout(async () => {
