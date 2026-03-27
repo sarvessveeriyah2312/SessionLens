@@ -69,8 +69,8 @@ const api = {
   },
 
   // Auto-updater
-  downloadUpdate: (): Promise<{ success: boolean; error?: string }> =>
-    ipcRenderer.invoke('updater:download'),
+  downloadUpdate: (releaseUrl?: string): Promise<{ success: boolean; devMode?: boolean; error?: string }> =>
+    ipcRenderer.invoke('updater:download', releaseUrl),
 
   installUpdate: (): Promise<void> => ipcRenderer.invoke('updater:install'),
 

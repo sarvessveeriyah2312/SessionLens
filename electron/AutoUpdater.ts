@@ -1,5 +1,5 @@
 import { autoUpdater } from 'electron-updater'
-import { ipcMain, BrowserWindow } from 'electron'
+import { ipcMain, BrowserWindow, app, shell } from 'electron'
 
 export function setupAutoUpdater(getWindow: () => BrowserWindow | null): void {
   autoUpdater.autoDownload = false
@@ -34,12 +34,21 @@ export function setupAutoUpdater(getWindow: () => BrowserWindow | null): void {
   })
 
   autoUpdater.on('error', (err) => {
-    send('updater:error', err.message)
+    // Suppress errors in dev/unpackaged mode — updater only works in production builds
+    if (!err.message.includes('dev-app-update') && !err.message.includes('ENOENT')) {
+      send('updater:error', err.message)
+    }
   })
 
   // IPC: trigger download
-  ipcMain.handle('updater:download', async () => {
+  ipcMain.handle('updater:download', async (_event, releaseUrl?: string) => {
+    if (!app.isPackaged) {
+      // Dev mode — electron-updater won't work, open the release page instead
+      if (releaseUrl) shell.openExternal(releaseUrl)
+      return { success: true, devMode: true }
+    }
     try {
+      await autoUpdater.checkForUpdates()
       await autoUpdater.downloadUpdate()
       return { success: true }
     } catch (err) {
@@ -49,11 +58,13 @@ export function setupAutoUpdater(getWindow: () => BrowserWindow | null): void {
 
   // IPC: quit and install
   ipcMain.handle('updater:install', () => {
+    if (!app.isPackaged) return
     autoUpdater.quitAndInstall()
   })
 
   // IPC: manual check
   ipcMain.handle('updater:check', async () => {
+    if (!app.isPackaged) return { success: false, devMode: true }
     try {
       const result = await autoUpdater.checkForUpdates()
       return { success: true, updateInfo: result?.updateInfo ?? null }
@@ -61,4 +72,11 @@ export function setupAutoUpdater(getWindow: () => BrowserWindow | null): void {
       return { success: false, error: String(err) }
     }
   })
+
+  // Run an initial check 5s after launch (production only)
+  if (app.isPackaged) {
+    setTimeout(() => {
+      autoUpdater.checkForUpdates().catch(() => {})
+    }, 5_000)
+  }
 }

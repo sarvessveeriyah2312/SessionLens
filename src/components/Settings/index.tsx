@@ -668,7 +668,12 @@ function UpdateModal({
   const handleDownload = async (): Promise<void> => {
     setPhase('downloading')
     setProgress(0)
-    const result = await window.api.downloadUpdate()
+    const result = await window.api.downloadUpdate(info.releaseUrl)
+    if (result.devMode) {
+      // Dev/unpacked mode — browser was opened, close modal
+      onClose()
+      return
+    }
     if (!result.success) {
       setPhase('error')
       setErrorMsg(result.error ?? 'Download failed')
