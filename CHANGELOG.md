@@ -1,3 +1,10 @@
+# [1.8.0](https://github.com/sarvessveeriyah2312/SessionLens/compare/v1.7.0...v1.8.0) (2026-03-27)
+
+
+### Features
+
+* implement in-app auto-updater with download progress, error handling, and direct installation. ([f964918](https://github.com/sarvessveeriyah2312/SessionLens/commit/f964918f4b8863fa2b4fb727adc7c33e4924e961))
+
 # [1.7.0](https://github.com/sarvessveeriyah2312/SessionLens/compare/v1.6.0...v1.7.0) (2026-03-27)
 
 
