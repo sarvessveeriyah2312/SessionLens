@@ -1,3 +1,10 @@
+# [1.7.0](https://github.com/sarvessveeriyah2312/SessionLens/compare/v1.6.0...v1.7.0) (2026-03-27)
+
+
+### Features
+
+* Add app update checking, update available notifications, and release history display. ([8413b2e](https://github.com/sarvessveeriyah2312/SessionLens/commit/8413b2e1f9d43f45fa0e47adb9058d3a00b894e0))
+
 # [1.6.0](https://github.com/sarvessveeriyah2312/SessionLens/compare/v1.5.0...v1.6.0) (2026-03-27)
 
 
