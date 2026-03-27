@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/sarvessveeriyah2312/SessionLens/compare/v1.5.0...v1.6.0) (2026-03-27)
+
+
+### Features
+
+* improve Windows process detection by using `tasklist` instead of `wmic` and enhance path encoding to support Windows paths. ([de69e94](https://github.com/sarvessveeriyah2312/SessionLens/commit/de69e941c51ffa60e92d9fb4a4cc2e1e17be02f3))
+
 # [1.5.0](https://github.com/sarvessveeriyah2312/SessionLens/compare/v1.4.0...v1.5.0) (2026-03-20)
 
 
